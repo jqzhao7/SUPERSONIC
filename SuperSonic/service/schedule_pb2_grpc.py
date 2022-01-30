@@ -56,8 +56,7 @@ class ScheduleServiceServicer(object):
     pass
 
     def init(self, request, context):
-        """halide方法
-    """
+       # missing associated documentation comment in .proto file
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
@@ -91,15 +90,13 @@ class ScheduleServiceServicer(object):
         raise NotImplementedError("Method not implemented!")
 
     def GetTvm(self, request, context):
-        """tvm方法
-    """
+       #pass the message for tvm
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")
 
     def GetStokeMsg(self, request, context):
-        """stoke方法
-    """
+        #pass the message for stoke
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details("Method not implemented!")
         raise NotImplementedError("Method not implemented!")

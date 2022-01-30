@@ -52,7 +52,7 @@ class stoke_rl:
 
     Actions:
         Type: Discrete(9)
-        NUm      Action      Description
+        Num      Action      Description
         0        add_nops	 Adds one extra nop instruction into the rewrite.
         1        delete	     Deletes one instruction at random.
         2        instruction Replaces an instruction with another one chosen at random.

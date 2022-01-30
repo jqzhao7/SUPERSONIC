@@ -1,6 +1,7 @@
 import SuperSonic.utils.environments.Halide_env
 import SuperSonic.utils.environments.stoke_env
 import SuperSonic.utils.environments.CSR_env
+import SuperSonic.utils.environments.rltvm_env 
 import sqlite3
 import os
 import re
@@ -337,6 +338,121 @@ class TaskEngine:
             Halide(policy).main()
         if self.tasks=="CSR":
             CSR(policy).main()
+
+def createDB(db_path = "SuperSonic/SQL/supersonic.db"):
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    # result,action history,reward,execution outputs
+    try:
+        c.execute(
+            """CREATE TABLE STOKE
+                        (
+                        TIME         FLOAT       NOT NULL,
+                        RESULT        TEXT    NOT NULL,
+                        REWARD        FLOAT  NOT NULL,
+                        PRIMARY KEY ('TIME'));"""
+        )
+
+        print("Table created successfully")
+    except:
+        pass
+
+    conn.commit()
+    conn.close()
+
+# add by zjq for tvm 
+# 首先TVM作为服务端, 需要先启动TVM, 然后才可以进行访问
+class Tvm:
+    def __init__(self, policy):
+        # database
+        #createDB("SuperSonic/SQL/supersonic.db")
+        createDB("../../SQL/supersonic.db")
+        print("dbl success")
+
+        # init paramete:r
+
+        self.RLAlgo = None
+        self.target = "localhost:50061"
+        self.log_path = "tasks/tvm/zjq/logs"
+        self.obs_file = ("tasks/tvm/zjq/record/finish.txt")
+        # TODO 用于执行tvm代码训练的路径
+        self.tvm_path = "/home/new_superSonic/SUPERSONIC-master/tasks/tvm/zjq/grpc/"
+        # self.tvm_path = "/home/new_superSonic/SUPERSONIC-master/tasks/tvm/zjq/code"
+        self.environment_path = SuperSonic.utils.environments.rltvm_env.RLClient
+        self.state_function = policy["StatList"]
+        self.action_function = policy["ActList"]
+        self.reward_function = policy["RewList"]
+        self.algorithm = policy["AlgList"]
+        self.experiment = "tvm"
+        self.local_dir = "SuperSonic/logs/model_save"
+        # stopper = CustomStopper(self.obs_file)
+        self.deadline = 50
+        stopper = {"time_total_s": self.deadline}
+        self.task_config = {
+            "target": self.target,
+            "log_path": self.log_path,
+            "obs_file": self.obs_file,
+            "stop": stopper,
+            "tvm_path": self.tvm_path,
+            "state_function": self.state_function,
+            "action_function": self.action_function,
+            "reward_function": self.reward_function,
+            "algorithm": self.algorithm,
+            "experiment": self.experiment,
+            "local_dir": self.local_dir,
+        }
+        # self.environment_path = "tasks.src.opt_test.MCTS.environments.halide_env.HalideEnv_PPO"
+
+    # 启动子进程, 运行tvm服务端
+    def startTVMServer(self):
+        os.system(f"rm {self.obs_file}")  # clean the observation file
+        print(self.task_config)
+        print(f"{self.obs_file}")
+        kill_pid("50061")
+        self.child = subprocess.Popen(
+            f"cd {self.tvm_path} && python schedule.server.py {self.tvm_path} {self.obs_file}",
+            shell=True,
+        )
+
+        print("Child Finished")
+        # print(f"id = {self.algorithm_id},input_image = {self.input_image}")
+
+    def sql(self):
+        conn = sqlite3.connect("../..//SQL/supersonic.db")
+        print("Opened database successfully")
+
+    def run(self):
+        if os.path.exists(self.obs_file):
+            os.system(f"rm {self.obs_file}")
+
+        RLAlgorithms().Algorithms(
+            self.algorithm, self.task_config, self.environment_path
+        )
+        # try:
+        #     RLAlgorithms().Algorithms(
+        #         self.algorithm, self.task_config, self.environment_path
+        #     )
+        # except Exception as e:
+        #     print("error ... ",e)
+
+    def main(self):
+        self.sql()
+        self.startTVMServer()
+        self.run()
+
+def tvmMain():
+    print("start tvm")
+    policy = {
+        "StatList": "Actionhistory",
+         "ActList": "Doc2vec",
+         "RewList": "weight",
+         "AlgList": "DQN",
+    }
+
+    Tvm(policy).main()
+
+if __name__ == "__main__":
+    tvmMain()
 
 # if __name__ == "__main__":
 #     '''

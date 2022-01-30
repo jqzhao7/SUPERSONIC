@@ -1,10 +1,6 @@
-# https://www.cnblogs.com/pinard/p/10609228.html
-
-# 这里改了, 这里强化学习端作为客户端, 向tvm进行请求
-
 import grpc
-import tvm_pb2
-import tvm_pb2_grpc
+import schedule_pb2
+import schedule_pb2_grpc
 
 # 因为 RPC 应该长时间运行，考虑到性能，还需要用到并发的库。
 import time  # 设置系统延时,
@@ -43,28 +39,26 @@ logger = logging.getLogger(__name__)
 
 # NeuroVectorizer RL Environment
 # client
-class mcts(gym.Env):
-    def init_from_env_config(self, env_config):
-        self.inference_mode = env_config.get("inference_mode", False)
-        if self.inference_mode:
-            self.improvements = []
-
+class RLClient(gym.Env):
     def __init__(self, env_config):
-        self.init_from_env_config(env_config)
-        self.maxLen = 200
         self.env = gym.make(
             "Tvm-v0",
-            observation=env_config.get("observation"),
-            action=env_config.get("action"),
-            reward=env_config.get("reward"),
+            state_function=env_config.get("state_function"),
+            action_function=env_config.get("action_function"),
+            reward_function=env_config.get("reward_function"),
         )
+
+        self.maxLen = 200
 
         self.interleave_action_meaning = [
             _ for _ in range(maxLen_start)
         ]  # TODO: 根据需要更改action的空间
-        self.action_space = spaces.Discrete(
-            len(self.interleave_action_meaning)
+        self.action_space = Discrete(
+            maxLen_start
         )  # action_len
+
+        print(self.action_space, "/n=================action space=======/n")
+
         self.observation_space = Dict(
             {
                 "obs": self.env.observation_space,  # 调用的是cg的环境
@@ -85,14 +79,13 @@ class mcts(gym.Env):
         # lock.acquire() # 这里判断是否已经有锁, 没有的话就上锁, 然后向下执行, 否则等待解锁
         # global action_remote
         # action_remote = action
-
-        with grpc.insecure_channel("localhost:50060") as channel:  # 定义grpc端口号
+        with grpc.insecure_channel('localhost:50061') as channel:  # 定义grpc端口号
             # print("开始请求")
-            stub = tvm_pb2_grpc.TvmServiceStub(channel)  # 定义通道
+            stub = schedule_pb2_grpc.ScheduleServiceStub(channel)  # 定义通道
             response = stub.GetTvm(
-                tvm_pb2.TvmRequest(action=action)
+                schedule_pb2.TvmRequest(action=action)
             )  # 这是请求的数据给服务端, 然后在读取服务端返回来的数据
-            # response = stub.GetTvm(tvm_pb2.TvmRequest(state='world', reward=3.1415926)) # 这是请求的数据给服务端, 然后在读取服务端返回来的数据
+            # response = stub.GetTvm(schedule_pb2.TvmRequest(state='world', reward=3.1415926)) # 这是请求的数据给服务端, 然后在读取服务端返回来的数据
             # print(f"Client received: {response.reward}, {response.state}, {response.maxLen}")
             # print(response.reward, " action=",action)
 
